@@ -195,7 +195,7 @@ def setup_sparsehash_linux():
     # Try to install via package manager
     print("📦 Attempting to install sparsehash via package manager...")
 
-    # Try different package managers
+    # Try different package managers with and without sudo
     package_managers = [
         (["apt-get", "update"], ["apt-get", "install", "-y", "libsparsehash-dev"]),
         (["yum", "update"], ["yum", "install", "-y", "sparsehash-devel"]),
@@ -205,13 +205,22 @@ def setup_sparsehash_linux():
 
     for update_cmd, install_cmd in package_managers:
         try:
-            print(f"Trying {install_cmd[0]}...")
-            subprocess.run(update_cmd, check=True, capture_output=True)
-            subprocess.run(install_cmd, check=True, capture_output=True)
-            print(f"✅ Sparsehash installed via {install_cmd[0]}")
+            print(f"Trying {install_cmd[0]} with sudo...")
+            # Try with sudo first
+            subprocess.run(["sudo"] + update_cmd, check=True, capture_output=True)
+            subprocess.run(["sudo"] + install_cmd, check=True, capture_output=True)
+            print(f"✅ Sparsehash installed via sudo {install_cmd[0]}")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
-            continue
+            try:
+                print(f"Trying {install_cmd[0]} without sudo...")
+                # Try without sudo as fallback
+                subprocess.run(update_cmd, check=True, capture_output=True)
+                subprocess.run(install_cmd, check=True, capture_output=True)
+                print(f"✅ Sparsehash installed via {install_cmd[0]} (no sudo)")
+                return True
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
 
     # If package manager fails, build from source
     print("📦 Building sparsehash from source...")
@@ -241,7 +250,17 @@ def build_sparsehash_from_source():
             # Configure, build, and install
             subprocess.run(["./configure", "--prefix=/usr/local"], check=True)
             subprocess.run(["make"], check=True)
-            subprocess.run(["sudo", "make", "install"], check=True)
+
+            # Try to install with sudo, fallback to user install if sudo fails
+            try:
+                subprocess.run(["sudo", "make", "install"], check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print("⚠️  sudo not available or failed, trying user install...")
+                subprocess.run(["make", "install", f"PREFIX={os.path.expanduser('~/.local')}"], check=True)
+                # Add to environment for subsequent builds
+                local_include = os.path.expanduser("~/.local/include")
+                current_cppflags = os.environ.get("CPPFLAGS", "")
+                os.environ["CPPFLAGS"] = f"{current_cppflags} -I{local_include}"
 
             os.chdir("..")
             shutil.rmtree(build_dir)

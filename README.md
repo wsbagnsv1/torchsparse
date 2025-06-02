@@ -60,7 +60,7 @@ pip install git+https://github.com/Deathdadev/torchsparse.git
 - Visual Studio 2019/2022
 - CUDA 11.x or 12.x
 
-**📚 Detailed Windows Setup:** See [WINDOWS_SETUP_GUIDE.md](WINDOWS_SETUP_GUIDE.md)
+**📚 Detailed Cross-Platform Setup:** See [CROSS_PLATFORM_SETUP_GUIDE.md](CROSS_PLATFORM_SETUP_GUIDE.md)
 
 ### 🐧 Linux Installation
 

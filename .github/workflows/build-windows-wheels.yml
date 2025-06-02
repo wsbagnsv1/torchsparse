@@ -68,7 +68,7 @@ jobs:
 
     - name: Install sparsehash (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       run: |
         # Download and extract sparsehash
         Invoke-WebRequest -Uri "https://github.com/sparsehash/sparsehash/archive/refs/tags/sparsehash-2.0.4.zip" -OutFile "sparsehash.zip"
@@ -85,16 +85,24 @@ jobs:
 
     - name: Install PyTorch (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       run: |
         $cuda_version = "${{ matrix.cuda-version }}"
 
-        if ($cuda_version -eq "11.8") {
-          pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
-        } elseif ($cuda_version -eq "12.1") {
-          pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-        } elseif ($cuda_version -eq "12.4") {
-          pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+        switch ($cuda_version) {
+          "11.8" {
+            pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+          }
+          "12.1" {
+            pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+          }
+          "12.4" {
+            pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+          }
+          default {
+            Write-Error "Unsupported CUDA version: $cuda_version"
+            exit 1
+          }
         }
 
     - name: Install PyTorch (Linux)
@@ -112,7 +120,7 @@ jobs:
 
     - name: Set build environment (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       run: |
         # Set environment variables for optimized Windows build
         echo "CL=/O1 /MP4" >> $env:GITHUB_ENV
@@ -246,7 +254,7 @@ jobs:
 
         ### 📚 Documentation
 
-        - [Windows Setup Guide](WINDOWS_SETUP_GUIDE.md)
+        - [Cross-Platform Setup Guide](CROSS_PLATFORM_SETUP_GUIDE.md)
         - [Troubleshooting Guide](TROUBLESHOOTING.md)
         - [Build Instructions](build_wheels.py)
         - [Installation Verification](verify_installation.py)

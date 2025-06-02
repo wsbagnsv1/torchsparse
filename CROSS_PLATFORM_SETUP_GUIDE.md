@@ -1,6 +1,6 @@
 # Cross-Platform TorchSparse Setup Guide
 
-This guide provides comprehensive instructions for installing TorchSparse with cross-platform support, including Windows and Linux compatibility fixes, extensive version support, and dependency resolution.
+This guide provides comprehensive instructions for installing TorchSparse with full cross-platform support, including Windows and Linux compatibility fixes, extensive version support, and automated dependency resolution.
 
 ## 🎯 Quick Start (Recommended)
 
