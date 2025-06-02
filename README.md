@@ -39,7 +39,30 @@ Point cloud computation has become an increasingly more important workload for a
 
 ## Installation
 
-We provide pre-built torchsparse v2.1.0 packages (recommended) with different PyTorch and CUDA versions to simplify the building for the Linux system.
+We provide pre-built torchsparse v2.1.0 packages (recommended) with different PyTorch and CUDA versions to simplify the building for Linux and Windows systems.
+
+### 🪟 Windows Installation (New!)
+
+For Windows users, we now provide native Windows support with pre-built wheels:
+
+```bash
+# Quick installation with pre-built wheels
+pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-windows/torchsparse-2.1.0-cp310-cp310-win_amd64.whl
+
+# Or build from source
+pip install git+https://github.com/Deathdadev/torchsparse.git
+```
+
+**📋 Windows Requirements:**
+- Windows 10/11 (x64)
+- Python 3.8-3.11
+- PyTorch 1.9.0+ with CUDA
+- Visual Studio 2019/2022
+- CUDA 11.x or 12.x
+
+**📚 Detailed Windows Setup:** See [WINDOWS_SETUP_GUIDE.md](WINDOWS_SETUP_GUIDE.md)
+
+### 🐧 Linux Installation
 
 1. Ensure at least PyTorch 1.9.0 is installed:
 
