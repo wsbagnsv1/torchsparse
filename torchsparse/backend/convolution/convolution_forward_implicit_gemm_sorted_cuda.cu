@@ -1,3 +1,8 @@
+#ifdef _MSC_VER // MSVC compiler (used by nvcc on Windows)
+#define __asm__ asm
+#define __volatile__ volatile
+#endif
+
 #include <torch/extension.h>
 #include "convolution_forward_implicit_gemm_sorted_cuda.h"
 #include "../utils/memory.cuh"

@@ -1,5 +1,6 @@
 import glob
 import os
+import platform
 
 import torch
 import torch.cuda
@@ -34,10 +35,18 @@ for fpath in glob.glob(os.path.join("torchsparse", "backend", "**", "*")):
         sources.append(fpath)
 
 extension_type = CUDAExtension if device == "cuda" else CppExtension
-extra_compile_args = {
-    "cxx": ["-g", "-O3", "-fopenmp", "-lgomp"],
-    "nvcc": ["-O3", "-std=c++17"],
-}
+
+# Platform-specific compiler arguments
+if platform.system() == "Windows":
+    extra_compile_args = {
+        "cxx": ["/MD", "/O2", "/EHsc"],
+        "nvcc": ["-O3", "-std=c++17"],
+    }
+else:
+    extra_compile_args = {
+        "cxx": ["-g", "-O3", "-fopenmp", "-lgomp"],
+        "nvcc": ["-O3", "-std=c++17"],
+    }
 
 setup(
     name="torchsparse",
