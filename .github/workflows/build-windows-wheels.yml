@@ -27,7 +27,7 @@ jobs:
   build-wheels:
     strategy:
       matrix:
-        os: [windows-2022, ubuntu-20.04]
+        os: [windows-2022, ubuntu-22.04]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         cuda-version: ['11.8', '12.1', '12.4']
         exclude:
@@ -43,7 +43,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -145,18 +145,31 @@ jobs:
       env:
         INCLUDE: ${{ env.INCLUDE }}
 
-    - name: Test wheel installation
+    - name: Test wheel installation (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: |
         # Install the built wheel
         $wheel = Get-ChildItem -Path "dist" -Filter "*.whl" | Select-Object -First 1
         pip install $wheel.FullName
-        
+
+        # Test basic functionality
+        python -c "import torchsparse; print(f'TorchSparse version: {torchsparse.__version__}')"
+        python -c "import torch; import torchsparse; print('Basic import test passed')"
+
+    - name: Test wheel installation (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        # Install the built wheel
+        wheel=$(find dist -name "*.whl" | head -1)
+        pip install "$wheel"
+
         # Test basic functionality
         python -c "import torchsparse; print(f'TorchSparse version: {torchsparse.__version__}')"
         python -c "import torch; import torchsparse; print('Basic import test passed')"
 
     - name: Upload wheel artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wheels-${{ runner.os }}-python${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}
         path: dist/*.whl
@@ -165,13 +178,13 @@ jobs:
     needs: build-wheels
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Download all wheel artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: wheels
 
@@ -238,11 +251,11 @@ jobs:
         - Visual Studio: 2019 or 2022
 
         **Linux:**
-        - OS: Ubuntu 18.04+, CentOS 7+, or equivalent
+        - OS: Ubuntu 20.04+, CentOS 8+, or equivalent
         - Python: 3.8-3.12
         - PyTorch: 1.9.0+ to 2.4.0+
         - CUDA: 11.8, 12.1, or 12.4
-        - GCC: 7.0+
+        - GCC: 9.0+
 
         ### 🎯 PyTorch & CUDA Version Support
 
@@ -297,15 +310,15 @@ jobs:
     needs: build-wheels
     strategy:
       matrix:
-        os: [windows-2022, ubuntu-20.04]
+        os: [windows-2022, ubuntu-22.04]
         python-version: ['3.10']  # Test with one version
         cuda-version: ['12.1']    # Test with stable CUDA version
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -316,7 +329,7 @@ jobs:
         method: 'network'
 
     - name: Download wheel artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: wheels-${{ runner.os }}-python${{ matrix.python-version }}-cuda${{ matrix.cuda-version }}
         path: wheels
