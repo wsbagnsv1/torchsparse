@@ -1,3 +1,22 @@
 .vscode/
 build/
 *.pyc
+
+# Distribution / packaging
+dist/
+*.egg-info/
+*.whl
+*.tar.gz
+
+# Build artifacts
+build_env_*/
+release/
+
+# Platform-specific
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class

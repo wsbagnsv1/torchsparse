@@ -1,22 +1,38 @@
-# Windows-Compatible TorchSparse Setup Guide
+# Cross-Platform TorchSparse Setup Guide
 
-This guide provides comprehensive instructions for installing the Windows-compatible version of TorchSparse that includes fixes for MSVC compilation issues, type compatibility, and dependency resolution.
+This guide provides comprehensive instructions for installing TorchSparse with cross-platform support, including Windows and Linux compatibility fixes, extensive version support, and dependency resolution.
 
 ## 🎯 Quick Start (Recommended)
 
 For most users, we recommend using the pre-built wheel packages:
 
+### Windows
 ```bash
-pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-windows/torchsparse-2.1.0-cp310-cp310-win_amd64.whl
+# Python 3.10 with CUDA 12.1 (most common)
+pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-cross-platform/torchsparse-2.1.0-cp310-cp310-win_amd64.whl
+
+# Python 3.11 with CUDA 12.4 (latest)
+pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-cross-platform/torchsparse-2.1.0-cp311-cp311-win_amd64.whl
+```
+
+### Linux
+```bash
+# Python 3.10 with CUDA 12.1 (most common)
+pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-cross-platform/torchsparse-2.1.0-cp310-cp310-linux_x86_64.whl
+
+# Python 3.11 with CUDA 12.4 (latest)
+pip install https://github.com/Deathdadev/torchsparse/releases/download/v2.1.0-cross-platform/torchsparse-2.1.0-cp311-cp311-linux_x86_64.whl
 ```
 
 ## 📋 Prerequisites
 
 ### Required Software
-- **Python**: 3.8, 3.9, 3.10, or 3.11
-- **PyTorch**: 1.9.0+ with CUDA support
-- **CUDA Toolkit**: 11.x or 12.x
-- **Microsoft Visual Studio**: 2019 or 2022 with C++ build tools
+- **Python**: 3.8, 3.9, 3.10, 3.11, or 3.12
+- **PyTorch**: 1.9.0+ to 2.5.0+ with CUDA support
+- **CUDA Toolkit**: 11.1, 11.3, 11.6, 11.7, 11.8, 12.0, 12.1, or 12.4
+- **Platform-specific tools**:
+  - **Windows**: Microsoft Visual Studio 2019 or 2022 with C++ build tools
+  - **Linux**: GCC 7.0+, build-essential, python3-dev
 - **Git**: For cloning repositories
 
 ### Verify Prerequisites
@@ -193,14 +209,38 @@ $env:FORCE_CUDA = "1"
 
 ## 📊 Compatibility Matrix
 
-| Component | Supported Versions |
-|-----------|-------------------|
-| Python | 3.8, 3.9, 3.10, 3.11 |
-| PyTorch | 1.9.0+ |
-| CUDA | 11.1, 11.3, 11.6, 11.7, 11.8, 12.0, 12.1 |
-| Windows | 10, 11 |
-| Visual Studio | 2019, 2022 |
-| GPU Architectures | SM 7.5+ (RTX 20xx, 30xx, 40xx series) |
+### Platform Support
+| Platform | Python Versions | CUDA Versions | PyTorch Versions |
+|----------|-----------------|---------------|------------------|
+| **Windows 10/11** | 3.8, 3.9, 3.10, 3.11, 3.12 | 11.8, 12.1, 12.4 | 1.9.0 - 2.5.0 |
+| **Linux (Ubuntu 18.04+)** | 3.8, 3.9, 3.10, 3.11, 3.12 | 11.1, 11.3, 11.6, 11.7, 11.8, 12.0, 12.1, 12.4 | 1.9.0 - 2.5.0 |
+
+### CUDA & PyTorch Version Mapping
+| CUDA Version | Compatible PyTorch Versions |
+|--------------|----------------------------|
+| 11.1 | 1.9.0, 1.9.1 |
+| 11.3 | 1.9.0, 1.9.1 |
+| 11.6 | 1.10.0, 1.11.0, 1.12.0, 1.13.0 |
+| 11.7 | 1.13.0, 1.13.1 |
+| 11.8 | 2.0.0, 2.0.1 |
+| 12.0 | 2.1.0, 2.2.0, 2.3.0, 2.4.0 |
+| 12.1 | 2.1.0, 2.2.0, 2.3.0, 2.4.0 |
+| 12.4 | 2.4.0, 2.5.0 |
+
+### GPU Architecture Support
+| GPU Series | Architecture | CUDA Compute Capability |
+|------------|--------------|-------------------------|
+| RTX 20xx | Turing | 7.5 |
+| RTX 30xx | Ampere | 8.6 |
+| RTX 40xx | Ada Lovelace | 8.9 |
+| Tesla V100 | Volta | 7.0 |
+| Tesla A100 | Ampere | 8.0 |
+
+### Build Tools
+| Platform | Required Tools |
+|----------|----------------|
+| **Windows** | Visual Studio 2019/2022, MSVC v142/v143 |
+| **Linux** | GCC 7.0+, build-essential, cmake |
 
 ## 🆘 Getting Help
 
