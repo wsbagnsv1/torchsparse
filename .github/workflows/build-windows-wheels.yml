@@ -92,6 +92,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libsparsehash-dev
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
@@ -101,23 +107,12 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install CUDA Toolkit ${{ matrix.cuda-version }}
+      if: runner.os == 'Windows'  # Only install CUDA Toolkit on Windows; Linux uses PyTorch wheels with CUDA runtime
       uses: Jimver/cuda-toolkit@v0.2.23
       with:
         cuda: ${{ matrix.cuda-version }}.0
         method: 'network'
         sub-packages: '["nvcc", "cudart", "cublas", "curand", "cufft", "cusparse", "cusolver"]'
-
-    - name: Setup Visual Studio environment (Windows)
-      if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
-
-    - name: Install Linux dependencies
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libsparsehash-dev
 
     - name: Install sparsehash (Windows)
       if: runner.os == 'Windows'
@@ -130,6 +125,30 @@ jobs:
 
         # Set environment variable for subsequent steps
         echo "INCLUDE=$env:INCLUDE;C:\sparsehash\src" >> $env:GITHUB_ENV
+
+    - name: Setup Visual Studio environment (Windows)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install sparsehash (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # Download and extract sparsehash
+        Invoke-WebRequest -Uri "https://github.com/sparsehash/sparsehash/archive/refs/tags/sparsehash-2.0.4.zip" -OutFile "sparsehash.zip"
+        Expand-Archive -Path "sparsehash.zip" -DestinationPath "C:\"
+        Rename-Item "C:\sparsehash-sparsehash-2.0.4" "C:\sparsehash"
+
+        # Set environment variable for subsequent steps
+        echo "INCLUDE=$env:INCLUDE;C:\sparsehash\src" >> $env:GITHUB_ENV
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libsparsehash-dev
 
     - name: Install Python dependencies
       run: |
@@ -549,4 +568,4 @@ jobs:
         sparse_tensor = torchsparse.SparseTensor(coords=coords, feats=feats)
         print(f'Sparse tensor shape: {sparse_tensor.shape}')
         print('✅ All tests passed!')
-        "
+        '
