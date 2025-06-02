@@ -13,7 +13,11 @@ on:
       cuda_versions:
         description: 'CUDA versions to build (comma-separated)'
         required: false
-        default: '11.8,12.1,12.4'
+        default: '11.8,12.1,12.4,12.6,12.8'
+      pytorch_version:
+        description: 'PyTorch version to install (e.g., "2.1.0", "2.4.0", or "latest" for newest)'
+        required: false
+        default: 'latest'
       platforms:
         description: 'Platforms to build for (comma-separated: windows,linux)'
         required: false
@@ -29,7 +33,7 @@ jobs:
       matrix:
         os: [windows-2022, ubuntu-22.04]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-        cuda-version: ['11.8', '12.1', '12.4']
+        cuda-version: ['11.8', '12.1', '12.4', '12.6', '12.8']
         exclude:
           # Exclude Python 3.12 with older CUDA versions for compatibility
           - python-version: '3.12'
@@ -48,9 +52,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install CUDA Toolkit ${{ matrix.cuda-version }}
-      uses: Jimver/cuda-toolkit@v0.2.11
+      uses: Jimver/cuda-toolkit@v0.2.23
       with:
-        cuda: ${{ matrix.cuda-version }}
+        cuda: ${{ matrix.cuda-version }}.0
         method: 'network'
         sub-packages: '["nvcc", "cudart", "cublas", "curand", "cufft", "cusparse", "cusolver"]'
 
@@ -88,20 +92,45 @@ jobs:
       shell: pwsh
       run: |
         $cuda_version = "${{ matrix.cuda-version }}"
+        $pytorch_version = "${{ github.event.inputs.pytorch_version || 'latest' }}"
 
-        switch ($cuda_version) {
-          "11.8" {
-            pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
-          }
-          "12.1" {
-            pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-          }
-          "12.4" {
-            pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 --index-url https://download.pytorch.org/whl/cu124
-          }
+        # Determine CUDA short version for wheel index
+        $cuda_short = switch ($cuda_version) {
+          "11.8" { "cu118" }
+          "12.1" { "cu121" }
+          "12.4" { "cu124" }
+          "12.6" { "cu126" }
+          "12.8" { "cu128" }
           default {
             Write-Error "Unsupported CUDA version: $cuda_version"
             exit 1
+          }
+        }
+
+        $index_url = "https://download.pytorch.org/whl/$cuda_short"
+
+        if ($pytorch_version -eq "latest") {
+          Write-Host "Installing latest PyTorch for CUDA $cuda_version"
+          pip install torch torchvision --index-url $index_url
+        } else {
+          Write-Host "Installing PyTorch $pytorch_version for CUDA $cuda_version"
+          # For specific versions, we need to determine compatible torchvision version
+          # This is a simplified mapping - in practice, you might want more sophisticated logic
+          $torchvision_version = switch ($pytorch_version) {
+            "2.0.1" { "0.15.2" }
+            "2.1.0" { "0.16.0" }
+            "2.4.0" { "0.19.0" }
+            "2.5.0" { "0.20.0" }
+            default {
+              Write-Host "Warning: Unknown torchvision version for PyTorch $pytorch_version, installing without version constraint"
+              $null
+            }
+          }
+
+          if ($torchvision_version) {
+            pip install "torch==$pytorch_version+$cuda_short" "torchvision==$torchvision_version+$cuda_short" --index-url $index_url
+          } else {
+            pip install "torch==$pytorch_version+$cuda_short" torchvision --index-url $index_url
           }
         }
 
@@ -109,13 +138,63 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         cuda_version="${{ matrix.cuda-version }}"
+        pytorch_version="${{ github.event.inputs.pytorch_version || 'latest' }}"
 
-        if [ "$cuda_version" = "11.8" ]; then
-          pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
-        elif [ "$cuda_version" = "12.1" ]; then
-          pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-        elif [ "$cuda_version" = "12.4" ]; then
-          pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+        # Determine CUDA short version for wheel index
+        case "$cuda_version" in
+          "11.8")
+            cuda_short="cu118"
+            ;;
+          "12.1")
+            cuda_short="cu121"
+            ;;
+          "12.4")
+            cuda_short="cu124"
+            ;;
+          "12.6")
+            cuda_short="cu126"
+            ;;
+          "12.8")
+            cuda_short="cu128"
+            ;;
+          *)
+            echo "Error: Unsupported CUDA version: $cuda_version"
+            exit 1
+            ;;
+        esac
+
+        index_url="https://download.pytorch.org/whl/$cuda_short"
+
+        if [ "$pytorch_version" = "latest" ]; then
+          echo "Installing latest PyTorch for CUDA $cuda_version"
+          pip install torch torchvision --index-url "$index_url"
+        else
+          echo "Installing PyTorch $pytorch_version for CUDA $cuda_version"
+          # Determine compatible torchvision version
+          case "$pytorch_version" in
+            "2.0.1")
+              torchvision_version="0.15.2"
+              ;;
+            "2.1.0")
+              torchvision_version="0.16.0"
+              ;;
+            "2.4.0")
+              torchvision_version="0.19.0"
+              ;;
+            "2.5.0")
+              torchvision_version="0.20.0"
+              ;;
+            *)
+              echo "Warning: Unknown torchvision version for PyTorch $pytorch_version, installing without version constraint"
+              torchvision_version=""
+              ;;
+          esac
+
+          if [ -n "$torchvision_version" ]; then
+            pip install "torch==$pytorch_version+$cuda_short" "torchvision==$torchvision_version+$cuda_short" --index-url "$index_url"
+          else
+            pip install "torch==$pytorch_version+$cuda_short" torchvision --index-url "$index_url"
+          fi
         fi
 
     - name: Set build environment (Windows)
@@ -223,10 +302,14 @@ jobs:
         | CUDA 11.8 | ✅ | ✅ | ✅ | ✅ | ❌ |
         | CUDA 12.1 | ✅ | ✅ | ✅ | ✅ | ✅ |
         | CUDA 12.4 | ✅ | ✅ | ✅ | ✅ | ✅ |
+        | CUDA 12.6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+        | CUDA 12.8 | ✅ | ✅ | ✅ | ✅ | ✅ |
         | **Linux** | | | | | |
         | CUDA 11.8 | ✅ | ✅ | ✅ | ✅ | ❌ |
         | CUDA 12.1 | ✅ | ✅ | ✅ | ✅ | ✅ |
         | CUDA 12.4 | ✅ | ✅ | ✅ | ✅ | ✅ |
+        | CUDA 12.6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+        | CUDA 12.8 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
         ### 🚀 Quick Installation
 
@@ -241,29 +324,41 @@ jobs:
         pip install git+https://github.com/Deathdadev/torchsparse.git
         ```
 
+        ### ⚙️ Build Configuration Options
+
+        The workflow supports flexible PyTorch version selection:
+        - **Latest PyTorch**: Use `pytorch_version: "latest"` (default) for newest compatible versions
+        - **Specific PyTorch**: Use `pytorch_version: "2.4.0"` for reproducible builds
+        - **CUDA Compatibility**: Automatic CUDA wheel index selection (cu118, cu121, cu124, cu126, cu128)
+
         ### 📋 System Requirements
 
         **Windows:**
         - OS: Windows 10/11 (x64)
         - Python: 3.8-3.12
-        - PyTorch: 1.9.0+ to 2.4.0+
-        - CUDA: 11.8, 12.1, or 12.4
+        - PyTorch: 1.9.0+ to 2.5.0+
+        - CUDA: 11.8, 12.1, 12.4, 12.6, or 12.8
         - Visual Studio: 2019 or 2022
 
         **Linux:**
         - OS: Ubuntu 20.04+, CentOS 8+, or equivalent
         - Python: 3.8-3.12
-        - PyTorch: 1.9.0+ to 2.4.0+
-        - CUDA: 11.8, 12.1, or 12.4
+        - PyTorch: 1.9.0+ to 2.5.0+
+        - CUDA: 11.8, 12.1, 12.4, 12.6, or 12.8
         - GCC: 9.0+
 
         ### 🎯 PyTorch & CUDA Version Support
 
-        | CUDA Version | PyTorch Versions |
-        |--------------|------------------|
-        | 11.8 | 2.0.0, 2.0.1 |
-        | 12.1 | 2.1.0, 2.2.0, 2.3.0, 2.4.0 |
-        | 12.4 | 2.4.0, 2.5.0 |
+        | CUDA Version | Supported PyTorch Versions | Wheel Index |
+        |--------------|----------------------------|-------------|
+        | 11.8 | 2.0.0+ (latest recommended) | cu118 |
+        | 12.1 | 2.1.0+ (latest recommended) | cu121 |
+        | 12.4 | 2.4.0+ (latest recommended) | cu124 |
+        | 12.6 | 2.5.0+ (latest recommended) | cu126 |
+        | 12.8 | 2.5.0+ (latest recommended) | cu128 |
+
+        **Note**: The workflow supports both specific PyTorch versions and "latest" for maximum flexibility.
+        When using "latest", the newest compatible PyTorch version for each CUDA version is automatically installed.
 
         ### 📚 Documentation
 
@@ -323,9 +418,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install CUDA Toolkit ${{ matrix.cuda-version }}
-      uses: Jimver/cuda-toolkit@v0.2.11
+      uses: Jimver/cuda-toolkit@v0.2.23
       with:
-        cuda: ${{ matrix.cuda-version }}
+        cuda: ${{ matrix.cuda-version }}.0
         method: 'network'
 
     - name: Download wheel artifacts
