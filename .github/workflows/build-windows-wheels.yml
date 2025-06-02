@@ -28,16 +28,65 @@ on:
         default: 'true'
 
 jobs:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - name: Generate build matrix
+      id: set-matrix
+      run: |
+        # Get input parameters or use defaults
+        python_versions="${{ github.event.inputs.python_versions || '3.8,3.9,3.10,3.11,3.12' }}"
+        cuda_versions="${{ github.event.inputs.cuda_versions || '11.8,12.1,12.4,12.6,12.8' }}"
+        platforms="${{ github.event.inputs.platforms || 'windows,linux' }}"
+
+        # Convert comma-separated strings to arrays
+        IFS=',' read -ra PYTHON_ARRAY <<< "$python_versions"
+        IFS=',' read -ra CUDA_ARRAY <<< "$cuda_versions"
+        IFS=',' read -ra PLATFORM_ARRAY <<< "$platforms"
+
+        # Map platforms to OS
+        os_array=()
+        for platform in "${PLATFORM_ARRAY[@]}"; do
+          case "$platform" in
+            "windows") os_array+=("windows-2022") ;;
+            "linux") os_array+=("ubuntu-22.04") ;;
+          esac
+        done
+
+        # Build matrix JSON
+        matrix_json="{\"include\":["
+        first=true
+
+        for os in "${os_array[@]}"; do
+          for python in "${PYTHON_ARRAY[@]}"; do
+            for cuda in "${CUDA_ARRAY[@]}"; do
+              # Skip Python 3.12 with CUDA 11.8 for compatibility
+              if [[ "$python" == "3.12" && "$cuda" == "11.8" ]]; then
+                continue
+              fi
+
+              if [ "$first" = true ]; then
+                first=false
+              else
+                matrix_json+=","
+              fi
+
+              matrix_json+="{\"os\":\"$os\",\"python-version\":\"$python\",\"cuda-version\":\"$cuda\"}"
+            done
+          done
+        done
+
+        matrix_json+="]}"
+
+        echo "Generated matrix: $matrix_json"
+        echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
+
   build-wheels:
+    needs: generate-matrix
     strategy:
-      matrix:
-        os: [windows-2022, ubuntu-22.04]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-        cuda-version: ['11.8', '12.1', '12.4', '12.6', '12.8']
-        exclude:
-          # Exclude Python 3.12 with older CUDA versions for compatibility
-          - python-version: '3.12'
-            cuda-version: '11.8'
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -402,7 +451,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-wheels:
-    needs: build-wheels
+    needs: [build-wheels, generate-matrix]
     strategy:
       matrix:
         os: [windows-2022, ubuntu-22.04]
